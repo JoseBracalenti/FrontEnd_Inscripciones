@@ -3,7 +3,7 @@
 import React from "react"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,13 +14,22 @@ import Link from "next/link"
 import Image from "next/image"
 import { useUserAuth } from "@/contexts/user-auth-context"
 
+/** Allow only relative paths to avoid open redirect */
+function safeRedirect(redirect: string | null): string {
+  if (!redirect || typeof redirect !== "string") return "/inscribirse"
+  const trimmed = redirect.trim()
+  if (!trimmed.startsWith("/") || trimmed.startsWith("//")) return "/inscribirse"
+  return trimmed
+}
+
 export default function UserLoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { login } = useUserAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [formData, setFormData] = useState({
-    email: "",
+    username: "",
     password: "",
   })
 
@@ -28,15 +37,24 @@ export default function UserLoginPage() {
     e.preventDefault()
     setIsLoading(true)
     setError("")
-    
-    const result = await login(formData.email, formData.password)
-    
+
+    const username = formData.username?.trim() ?? ""
+    const password = formData.password ?? ""
+    if (!username || !password) {
+      setError("Ingresá usuario y contraseña")
+      setIsLoading(false)
+      return
+    }
+
+    const result = await login(username, password)
+
     if (result.success) {
-      router.push("/inscribirse")
+      const redirect = searchParams.get("redirect")
+      router.push(safeRedirect(redirect))
     } else {
       setError(result.error || "Error al iniciar sesión")
     }
-    
+
     setIsLoading(false)
   }
 
@@ -85,13 +103,13 @@ export default function UserLoginPage() {
               )}
               
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="username">Usuario</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="tu@email.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  id="username"
+                  type="text"
+                  placeholder="Tu usuario"
+                  value={formData.username}
+                  onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
                   required
                   disabled={isLoading}
                 />
