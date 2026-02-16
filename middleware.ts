@@ -18,14 +18,8 @@ export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
   const authCookie = request.cookies.get("auth_token")
 
+  // Always allow login page to load so user can clear stale session and sign in
   if (isPublicRoute(pathname)) {
-    if (pathname.startsWith("/cuenta/login") && authCookie?.value) {
-      const redirect = request.nextUrl.searchParams.get("redirect")
-      const target = redirect?.startsWith("/") && !redirect.startsWith("//")
-        ? redirect
-        : DEFAULT_AFTER_LOGIN
-      return NextResponse.redirect(new URL(target, request.url))
-    }
     return NextResponse.next()
   }
 

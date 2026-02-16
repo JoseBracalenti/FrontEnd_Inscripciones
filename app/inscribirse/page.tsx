@@ -30,7 +30,9 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import { useUserAuth, type UserProfile } from "@/contexts/user-auth-context"
+import { useUserAuth } from "@/contexts/user-auth-context"
+import { inscripcionesService } from "@/lib/services/inscripciones.service"
+import type { CursoDisponibleDto, DivisionHorarioDto } from "@/lib/inscripciones.types"
 
 const STEPS = [
   { id: 1, name: "Verificar Datos" },
@@ -41,109 +43,36 @@ const STEPS = [
   { id: 6, name: "Confirmación" },
 ]
 
-// Simulated course data with availability
-const coursesData = {
-  idiomas: [
-    { id: "ingles-basico", name: "Inglés Básico", minAge: 12, maxAge: 99, price: 15000, spots: 5 },
-    { id: "ingles-intermedio", name: "Inglés Intermedio", minAge: 14, maxAge: 99, price: 15000, spots: 3 },
-    { id: "ingles-avanzado", name: "Inglés Avanzado", minAge: 16, maxAge: 99, price: 18000, spots: 0 },
-    { id: "frances-basico", name: "Francés Básico", minAge: 15, maxAge: 99, price: 15000, spots: 8 },
-    { id: "italiano-basico", name: "Italiano Básico", minAge: 15, maxAge: 99, price: 15000, spots: 10 },
-  ],
-  instrumentos: [
-    { id: "guitarra-1", name: "Guitarra Nivel 1", minAge: 10, maxAge: 99, price: 18000, spots: 4 },
-    { id: "guitarra-2", name: "Guitarra Nivel 2", minAge: 12, maxAge: 99, price: 18000, spots: 2 },
-    { id: "piano-1", name: "Piano Nivel 1", minAge: 8, maxAge: 99, price: 22000, spots: 1 },
-    { id: "piano-2", name: "Piano Nivel 2", minAge: 10, maxAge: 99, price: 22000, spots: 0 },
-    { id: "violin", name: "Violín", minAge: 8, maxAge: 99, price: 20000, spots: 3 },
-  ],
-  talleres: [
-    { id: "teatro", name: "Teatro", minAge: 14, maxAge: 99, price: 12000, spots: 15 },
-    { id: "pintura", name: "Pintura", minAge: 10, maxAge: 99, price: 12000, spots: 8 },
-    { id: "fotografia", name: "Fotografía", minAge: 16, maxAge: 99, price: 14000, spots: 6 },
-    { id: "danza", name: "Danza Contemporánea", minAge: 12, maxAge: 99, price: 12000, spots: 10 },
-  ],
-}
+const ANIO = new Date().getFullYear()
 
-const divisionsData: Record<string, Array<{ id: string; name: string; schedule: string; spots: number }>> = {
-  "ingles-basico": [
-    { id: "A", name: "División A", schedule: "Lunes y Miércoles 18:00 - 19:30", spots: 3 },
-    { id: "B", name: "División B", schedule: "Martes y Jueves 19:00 - 20:30", spots: 2 },
-  ],
-  "ingles-intermedio": [
-    { id: "A", name: "División A", schedule: "Lunes y Miércoles 19:30 - 21:00", spots: 3 },
-  ],
-  "frances-basico": [
-    { id: "A", name: "División A", schedule: "Viernes 17:00 - 19:00", spots: 8 },
-  ],
-  "italiano-basico": [
-    { id: "A", name: "División A", schedule: "Martes 18:00 - 20:00", spots: 10 },
-  ],
-  "guitarra-1": [
-    { id: "A", name: "División A", schedule: "Martes y Jueves 18:00 - 19:00", spots: 2 },
-    { id: "B", name: "División B", schedule: "Sábados 10:00 - 12:00", spots: 2 },
-  ],
-  "guitarra-2": [
-    { id: "A", name: "División A", schedule: "Miércoles y Viernes 18:00 - 19:00", spots: 2 },
-  ],
-  "piano-1": [
-    { id: "A", name: "División A", schedule: "Miércoles 16:00 - 17:00", spots: 1 },
-  ],
-  "violin": [
-    { id: "A", name: "División A", schedule: "Lunes 17:00 - 18:30", spots: 3 },
-  ],
-  "teatro": [
-    { id: "A", name: "División A", schedule: "Viernes 18:00 - 20:00", spots: 10 },
-    { id: "B", name: "División B", schedule: "Sábados 15:00 - 17:00", spots: 5 },
-  ],
-  "pintura": [
-    { id: "A", name: "División A", schedule: "Jueves 16:00 - 18:00", spots: 8 },
-  ],
-  "fotografia": [
-    { id: "A", name: "División A", schedule: "Sábados 10:00 - 13:00", spots: 6 },
-  ],
-  "danza": [
-    { id: "A", name: "División A", schedule: "Martes y Jueves 19:00 - 20:30", spots: 10 },
-  ],
+function formatPesos(n: number | null | undefined): string {
+  if (n == null || Number.isNaN(n)) return "A confirmar en administración"
+  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n)
 }
 
 export default function InscribirsePage() {
   const router = useRouter()
-  const { user, isLoading: authLoading, logout, updateProfile } = useUserAuth()
-  
+  const { user, isLoading: authLoading, logout } = useUserAuth()
+
   const [currentStep, setCurrentStep] = useState(1)
   const [inscriptionComplete, setInscriptionComplete] = useState(false)
   const [inscriptionNumber, setInscriptionNumber] = useState("")
   const [formData, setFormData] = useState({
-    // Tutor/Responsable (for minors)
-    tutorNombre: "",
-    tutorApellido: "",
-    tutorDni: "",
-    tutorRelacion: "",
-    tutorTelefono: "",
-    tutorEmail: "",
-    
-    // Emergency contact
-    emergenciaNombre: "",
-    emergenciaTelefono: "",
-    
-    // Course selection
-    tipoCurso: "",
-    curso: "",
+    curso: "" as number | "",
     cursoNombre: "",
-    division: "",
+    idDivisionHorario: null as number | null,
     divisionNombre: "",
     horario: "",
-    precio: 0,
-    
-    // Payment
     metodoPago: "",
     aceptaTerminos: false,
   })
-  
+
   const [edad, setEdad] = useState<number | null>(null)
-  const [availableCourses, setAvailableCourses] = useState<typeof coursesData.idiomas>([])
-  const [availableDivisions, setAvailableDivisions] = useState<typeof divisionsData["ingles-basico"]>([])
+  const [cursosDisponibles, setCursosDisponibles] = useState<CursoDisponibleDto[]>([])
+  const [cursosLoading, setCursosLoading] = useState(false)
+  const [cursosError, setCursosError] = useState<string | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Calculate age from user profile
   useEffect(() => {
@@ -156,38 +85,43 @@ export default function InscribirsePage() {
         edadCalc--
       }
       setEdad(edadCalc)
-      
-      // Pre-fill tutor data if exists
-      if (user.tutorNombre) {
-        setFormData(prev => ({
-          ...prev,
-          tutorNombre: user.tutorNombre || "",
-          tutorApellido: user.tutorApellido || "",
-          tutorDni: user.tutorDni || "",
-          tutorRelacion: user.tutorRelacion || "",
-          tutorTelefono: user.tutorTelefono || "",
-          tutorEmail: user.tutorEmail || "",
-        }))
-      }
     }
   }, [user])
 
-  // Filter courses by age when category changes
+  // Fetch available courses when user and age are ready
   useEffect(() => {
-    if (formData.tipoCurso && edad !== null) {
-      const courses = coursesData[formData.tipoCurso as keyof typeof coursesData] || []
-      const filtered = courses.filter(c => edad >= c.minAge && edad <= c.maxAge && c.spots > 0)
-      setAvailableCourses(filtered)
-    }
-  }, [formData.tipoCurso, edad])
+    if (!user || edad === null) return
+    setCursosLoading(true)
+    setCursosError(null)
+    inscripcionesService
+      .getCursosDisponibles(ANIO)
+      .then(setCursosDisponibles)
+      .catch((err) => setCursosError(err instanceof Error ? err.message : "Error al cargar cursos"))
+      .finally(() => setCursosLoading(false))
+  }, [user, edad])
 
-  // Load divisions when course changes
-  useEffect(() => {
-    if (formData.curso) {
-      const divisions = divisionsData[formData.curso] || []
-      setAvailableDivisions(divisions.filter(d => d.spots > 0))
-    }
-  }, [formData.curso])
+  // Courses available for current age (API already filters by age; we only filter by having at least one division with cupo)
+  const availableCourses = cursosDisponibles.filter((c) => {
+    if (edad === null) return false
+    if (edad < c.edadMinima || edad > c.edadMaxima) return false
+    const withCupo = c.divisiones.filter((d) => d.cupo > d.cantidadInscriptos)
+    return withCupo.length > 0
+  })
+
+  // Divisions for selected course with available spots
+  const selectedCourse = formData.curso !== "" ? cursosDisponibles.find((c) => c.id === formData.curso) : null
+  // Course that contains the selected division (for montoMatricula on payment step)
+  const courseForSelectedDivision =
+    formData.idDivisionHorario != null
+      ? cursosDisponibles.find((c) => c.divisiones.some((d) => d.id === formData.idDivisionHorario))
+      : null
+  const montoMatricula = courseForSelectedDivision?.montoMatricula ?? null
+  const cuotaMensual = montoMatricula != null ? montoMatricula / 10 : null
+  const availableDivisions = selectedCourse
+    ? selectedCourse.divisiones
+        .filter((d) => d.cupo > d.cantidadInscriptos)
+        .map((d) => ({ ...d, spots: d.cupo - d.cantidadInscriptos }))
+    : []
 
   const handleLogout = () => {
     logout()
@@ -195,8 +129,7 @@ export default function InscribirsePage() {
   }
 
   const handleNext = () => {
-    // Skip tutor step if adult
-    if (currentStep === 1 && edad && edad >= 18) {
+    if (currentStep === 1 && edad != null && edad >= 18) {
       setCurrentStep(3)
     } else if (currentStep < 6) {
       setCurrentStep(currentStep + 1)
@@ -204,77 +137,72 @@ export default function InscribirsePage() {
   }
 
   const handleBack = () => {
-    // Skip tutor step if adult
-    if (currentStep === 3 && edad && edad >= 18) {
+    if (currentStep === 3 && edad != null && edad >= 18) {
       setCurrentStep(1)
     } else if (currentStep > 1) {
       setCurrentStep(currentStep - 1)
     }
   }
 
-  const handleCourseSelect = (courseId: string) => {
-    const allCourses = [...coursesData.idiomas, ...coursesData.instrumentos, ...coursesData.talleres]
-    const course = allCourses.find(c => c.id === courseId)
-    setFormData(prev => ({
+  const handleCourseSelect = (courseId: number) => {
+    const course = cursosDisponibles.find((c) => c.id === courseId)
+    setFormData((prev) => ({
       ...prev,
       curso: courseId,
-      cursoNombre: course?.name || "",
-      precio: course?.price || 0,
-      division: "",
+      cursoNombre: course?.descripcion ?? "",
+      idDivisionHorario: null,
       divisionNombre: "",
       horario: "",
     }))
   }
 
-  const handleDivisionSelect = (divisionId: string) => {
-    const division = availableDivisions.find(d => d.id === divisionId)
-    setFormData(prev => ({
+  const handleDivisionSelect = (division: DivisionHorarioDto & { spots: number }) => {
+    setFormData((prev) => ({
       ...prev,
-      division: divisionId,
-      divisionNombre: division?.name || "",
-      horario: division?.schedule || "",
+      idDivisionHorario: division.id,
+      divisionNombre: `División ${division.letra}`,
+      horario: division.horarios,
     }))
   }
 
-  const handleSubmit = () => {
-    // Save tutor data to user profile if minor
-    if (user?.esMenor && formData.tutorNombre) {
-      updateProfile({
-        tutorNombre: formData.tutorNombre,
-        tutorApellido: formData.tutorApellido,
-        tutorDni: formData.tutorDni,
-        tutorRelacion: formData.tutorRelacion,
-        tutorTelefono: formData.tutorTelefono,
-        tutorEmail: formData.tutorEmail,
+  const handleSubmit = async () => {
+    if (formData.idDivisionHorario == null || !formData.metodoPago) return
+    setSubmitError(null)
+    setIsSubmitting(true)
+    const tipoPago = formData.metodoPago === "contado" ? "CONTADO" : "FINANCIADO"
+    try {
+      const res = await inscripcionesService.matricular({
+        idDivisionHorario: formData.idDivisionHorario,
+        tipoPago,
       })
+      setInscriptionNumber(String(res.iduInscripcionPublic ?? res.idInscripcionAcademica))
+      setInscriptionComplete(true)
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Error al confirmar la inscripción")
+    } finally {
+      setIsSubmitting(false)
     }
-    
-    // Generate inscription number
-    const numero = `INS-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 100000)).padStart(5, "0")}`
-    setInscriptionNumber(numero)
-    setInscriptionComplete(true)
   }
 
   const canProceed = () => {
     switch (currentStep) {
       case 1:
-        return true // Just verify data
+        return true
       case 2:
-        return !user?.esMenor || (
-          formData.tutorNombre && 
-          formData.tutorApellido && 
-          formData.tutorDni && 
-          formData.tutorRelacion &&
-          formData.tutorTelefono &&
-          formData.emergenciaNombre &&
-          formData.emergenciaTelefono
+        return (
+          !!user?.tutorNombre &&
+          !!user?.tutorApellido &&
+          !!user?.tutorDni &&
+          !!user?.tutorTelefono
         )
       case 3:
         return formData.curso !== ""
       case 4:
-        return formData.division !== ""
+        return formData.idDivisionHorario != null
       case 5:
         return formData.metodoPago !== "" && formData.aceptaTerminos
+      case 6:
+        return true
       default:
         return true
     }
@@ -411,16 +339,18 @@ export default function InscribirsePage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Método de pago</span>
                     <span className="font-medium">
-                      {formData.metodoPago === "contado" ? "Contado (10% desc.)" : "Cuotas mensuales"}
+                      {formData.metodoPago === "contado" ? "Contado" : "Cuotas mensuales"}
                     </span>
                   </div>
+                  {formData.metodoPago === "cuotas" && cuotaMensual != null && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Cuota mensual</span>
+                      <span className="font-medium">{formatPesos(cuotaMensual)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm font-medium">
-                    <span>Total a pagar</span>
-                    <span className="text-primary">
-                      ${formData.metodoPago === "contado" 
-                        ? Math.round(formData.precio * 0.9).toLocaleString() 
-                        : formData.precio.toLocaleString()}/mes
-                    </span>
+                    <span>Total</span>
+                    <span className="text-primary">{formatPesos(montoMatricula)}</span>
                   </div>
                 </div>
 
@@ -508,9 +438,8 @@ export default function InscribirsePage() {
           {/* Progress Steps */}
           <div className="mb-8">
             <div className="flex items-center justify-between">
-              {STEPS.filter(step => {
-                // Hide tutor step for adults
-                if (step.id === 2 && edad && edad >= 18) return false
+              {STEPS.filter((step) => {
+                if (step.id === 2 && edad != null && edad >= 18) return false
                 return true
               }).map((step, index, filteredSteps) => (
                 <div key={step.id} className="flex items-center">
@@ -560,7 +489,7 @@ export default function InscribirsePage() {
               <CardDescription>
                 {currentStep === 1 && "Revisá que tus datos sean correctos antes de continuar"}
                 {currentStep === 2 && "Completá los datos del tutor o responsable legal (requerido para menores)"}
-                {currentStep === 3 && "Seleccioná el tipo de curso y el curso específico según tu edad"}
+                {currentStep === 3 && "Seleccioná el curso según tu edad"}
                 {currentStep === 4 && "Elegí la división y el horario que mejor se adapte a tu disponibilidad"}
                 {currentStep === 5 && "Seleccioná cómo querés realizar el pago"}
                 {currentStep === 6 && "Revisá todos los datos antes de confirmar"}
@@ -629,196 +558,120 @@ export default function InscribirsePage() {
                 </div>
               )}
 
-              {/* Step 2: Tutor Data (for minors) */}
+              {/* Step 2: Tutor Data (for minors) — read-only from perfil */}
               {currentStep === 2 && (
                 <div className="space-y-6">
                   <Alert className="border-amber-200 bg-amber-50">
                     <AlertCircle className="h-4 w-4 text-amber-600" />
-                    <AlertTitle className="text-amber-800">Requerido para menores</AlertTitle>
+                    <AlertTitle className="text-amber-800">Datos del tutor o responsable</AlertTitle>
                     <AlertDescription className="text-amber-700 text-sm">
-                      Como el alumno es menor de edad, es necesario completar los datos del tutor o responsable legal.
+                      Verificá los datos del tutor o responsable legal. Si necesitás modificarlos, hacelo desde tu perfil o contactando a la administración del Liceo.
                     </AlertDescription>
                   </Alert>
 
                   <div className="space-y-4">
-                    <h3 className="font-medium">Datos del Tutor/Responsable</h3>
+                    <h3 className="font-medium">Tutor/Responsable</h3>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
-                        <Label htmlFor="tutorNombre">Nombre *</Label>
-                        <Input
-                          id="tutorNombre"
-                          value={formData.tutorNombre}
-                          onChange={(e) => setFormData(prev => ({ ...prev, tutorNombre: e.target.value }))}
-                          placeholder="Nombre del tutor"
-                        />
+                        <Label>Nombre</Label>
+                        <Input value={user.tutorNombre ?? ""} disabled className="bg-muted" />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="tutorApellido">Apellido *</Label>
-                        <Input
-                          id="tutorApellido"
-                          value={formData.tutorApellido}
-                          onChange={(e) => setFormData(prev => ({ ...prev, tutorApellido: e.target.value }))}
-                          placeholder="Apellido del tutor"
-                        />
+                        <Label>Apellido</Label>
+                        <Input value={user.tutorApellido ?? ""} disabled className="bg-muted" />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="tutorDni">DNI *</Label>
-                        <Input
-                          id="tutorDni"
-                          value={formData.tutorDni}
-                          onChange={(e) => setFormData(prev => ({ ...prev, tutorDni: e.target.value.replace(/\D/g, "") }))}
-                          placeholder="DNI sin puntos"
-                          maxLength={8}
-                        />
+                        <Label>DNI</Label>
+                        <Input value={user.tutorDni ?? ""} disabled className="bg-muted" />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="tutorRelacion">Relación con el alumno *</Label>
-                        <Select
-                          value={formData.tutorRelacion}
-                          onValueChange={(value) => setFormData(prev => ({ ...prev, tutorRelacion: value }))}
-                        >
-                          <SelectTrigger id="tutorRelacion">
-                            <SelectValue placeholder="Seleccionar relación" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="madre">Madre</SelectItem>
-                            <SelectItem value="padre">Padre</SelectItem>
-                            <SelectItem value="tutor">Tutor Legal</SelectItem>
-                            <SelectItem value="otro">Otro familiar</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <Label>Relación con el alumno</Label>
+                        <Input value={user.tutorRelacion ?? ""} disabled className="bg-muted" />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="tutorTelefono">Teléfono *</Label>
-                        <Input
-                          id="tutorTelefono"
-                          type="tel"
-                          value={formData.tutorTelefono}
-                          onChange={(e) => setFormData(prev => ({ ...prev, tutorTelefono: e.target.value }))}
-                          placeholder="Teléfono de contacto"
-                        />
+                        <Label>Teléfono</Label>
+                        <Input value={user.tutorTelefono ?? ""} disabled className="bg-muted" />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="tutorEmail">Email</Label>
-                        <Input
-                          id="tutorEmail"
-                          type="email"
-                          value={formData.tutorEmail}
-                          onChange={(e) => setFormData(prev => ({ ...prev, tutorEmail: e.target.value }))}
-                          placeholder="Email del tutor (opcional)"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-4">
-                    <h3 className="font-medium">Contacto de Emergencia</h3>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="emergenciaNombre">Nombre completo *</Label>
-                        <Input
-                          id="emergenciaNombre"
-                          value={formData.emergenciaNombre}
-                          onChange={(e) => setFormData(prev => ({ ...prev, emergenciaNombre: e.target.value }))}
-                          placeholder="Nombre del contacto de emergencia"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="emergenciaTelefono">Teléfono *</Label>
-                        <Input
-                          id="emergenciaTelefono"
-                          type="tel"
-                          value={formData.emergenciaTelefono}
-                          onChange={(e) => setFormData(prev => ({ ...prev, emergenciaTelefono: e.target.value }))}
-                          placeholder="Teléfono de emergencia"
-                        />
+                        <Label>Email</Label>
+                        <Input value={user.tutorEmail ?? ""} disabled className="bg-muted" />
                       </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Step 3: Course Selection */}
+              {/* Step 3: Course Selection (from API) */}
               {currentStep === 3 && (
                 <div className="space-y-6">
-                  <div className="space-y-4">
-                    <Label>Tipo de Curso</Label>
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      {[
-                        { id: "idiomas", name: "Idiomas", desc: "Inglés, Francés, Italiano..." },
-                        { id: "instrumentos", name: "Instrumentos", desc: "Guitarra, Piano, Violín..." },
-                        { id: "talleres", name: "Talleres", desc: "Teatro, Pintura, Fotografía..." },
-                      ].map((tipo) => (
-                        <Card
-                          key={tipo.id}
-                          className={`cursor-pointer transition-all hover:border-primary ${
-                            formData.tipoCurso === tipo.id ? "border-primary bg-primary/5" : ""
-                          }`}
-                          onClick={() => setFormData(prev => ({ 
-                            ...prev, 
-                            tipoCurso: tipo.id, 
-                            curso: "", 
-                            cursoNombre: "",
-                            division: "",
-                            divisionNombre: "",
-                            horario: "",
-                            precio: 0
-                          }))}
-                        >
-                          <CardContent className="p-4">
-                            <h4 className="font-medium">{tipo.name}</h4>
-                            <p className="text-xs text-muted-foreground">{tipo.desc}</p>
-                          </CardContent>
-                        </Card>
-                      ))}
+                  {cursosLoading ? (
+                    <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span>Cargando cursos disponibles...</span>
                     </div>
-                  </div>
-
-                  {formData.tipoCurso && (
-                    <div className="space-y-4">
-                      <Label>Curso Disponible (para tu edad: {edad} años)</Label>
-                      {availableCourses.length === 0 ? (
-                        <Alert variant="destructive">
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertDescription>
-                            No hay cursos disponibles en esta categoría para tu edad o todos los cupos están completos.
-                          </AlertDescription>
-                        </Alert>
-                      ) : (
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          {availableCourses.map((course) => (
-                            <Card
-                              key={course.id}
-                              className={`cursor-pointer transition-all hover:border-primary ${
-                                formData.curso === course.id ? "border-primary bg-primary/5" : ""
-                              }`}
-                              onClick={() => handleCourseSelect(course.id)}
-                            >
-                              <CardContent className="p-4">
-                                <div className="flex items-start justify-between">
-                                  <div>
-                                    <h4 className="font-medium">{course.name}</h4>
-                                    <p className="text-sm text-muted-foreground">
-                                      ${course.price.toLocaleString()}/mes
-                                    </p>
-                                  </div>
-                                  <Badge variant={course.spots <= 3 ? "destructive" : "secondary"}>
-                                    {course.spots} cupos
-                                  </Badge>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
+                  ) : cursosError ? (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{cursosError}</AlertDescription>
+                    </Alert>
+                  ) : availableCourses.length === 0 ? (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        No hay cursos disponibles para tu edad ({edad} años) o todos los cupos están completos.
+                      </AlertDescription>
+                    </Alert>
+                  ) : (
+                    <>
+                      <p className="text-sm text-muted-foreground">
+                        Año lectivo {ANIO}. Seleccioná un curso (para tu edad: {edad} años).
+                      </p>
+                      {Array.from(new Set(availableCourses.map((c) => c.carreraNombre))).map((carrera) => (
+                        <div key={carrera} className="space-y-3">
+                          <Label className="text-muted-foreground">{carrera}</Label>
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            {availableCourses
+                              .filter((c) => c.carreraNombre === carrera)
+                              .map((course) => {
+                                const totalCupos = course.divisiones.filter(
+                                  (d) => d.cupo > d.cantidadInscriptos
+                                ).length
+                                return (
+                                  <Card
+                                    key={course.id}
+                                    className={`cursor-pointer transition-all hover:border-primary ${
+                                      formData.curso === course.id ? "border-primary bg-primary/5" : ""
+                                    }`}
+                                    onClick={() => handleCourseSelect(course.id)}
+                                  >
+                                    <CardContent className="p-4">
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div>
+                                          <h4 className="font-medium">{course.descripcion}</h4>
+                                          <p className="text-xs text-muted-foreground">
+                                            {course.edadMinima}–{course.edadMaxima} años · {totalCupos}{" "}
+                                            división{totalCupos !== 1 ? "es" : ""} con cupo
+                                          </p>
+                                          {course.montoMatricula != null && (
+                                            <p className="text-sm font-medium text-primary mt-1">
+                                              {formatPesos(course.montoMatricula)}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </CardContent>
+                                  </Card>
+                                )
+                              })}
+                          </div>
                         </div>
-                      )}
-                    </div>
+                      ))}
+                    </>
                   )}
                 </div>
               )}
 
-              {/* Step 4: Division and Schedule */}
+              {/* Step 4: Division and Schedule (from API) */}
               {currentStep === 4 && (
                 <div className="space-y-6">
                   <div className="rounded-lg bg-muted p-4">
@@ -841,21 +694,26 @@ export default function InscribirsePage() {
                           <Card
                             key={division.id}
                             className={`cursor-pointer transition-all hover:border-primary ${
-                              formData.division === division.id ? "border-primary bg-primary/5" : ""
+                              formData.idDivisionHorario === division.id ? "border-primary bg-primary/5" : ""
                             }`}
-                            onClick={() => handleDivisionSelect(division.id)}
+                            onClick={() => handleDivisionSelect(division)}
                           >
                             <CardContent className="flex items-center justify-between p-4">
                               <div className="flex items-center gap-4">
                                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                                  <span className="font-bold text-primary">{division.id}</span>
+                                  <span className="font-bold text-primary">{division.letra}</span>
                                 </div>
                                 <div>
-                                  <h4 className="font-medium">{division.name}</h4>
+                                  <h4 className="font-medium">División {division.letra}</h4>
                                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                     <Clock className="h-4 w-4" />
-                                    <span>{division.schedule}</span>
+                                    <span>{division.horarios}</span>
                                   </div>
+                                  {division.instrumentoDescripcion && (
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      {division.instrumentoDescripcion}
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
@@ -886,53 +744,68 @@ export default function InscribirsePage() {
                       <span className="font-medium">{formData.divisionNombre}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Precio mensual</span>
-                      <span className="font-medium">${formData.precio.toLocaleString()}</span>
+                      <span className="text-muted-foreground">Matrícula (año)</span>
+                      <span className="font-medium">{formatPesos(montoMatricula)}</span>
                     </div>
                   </div>
 
                   <RadioGroup
                     value={formData.metodoPago}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, metodoPago: value }))}
+                    onValueChange={(value) => setFormData((prev) => ({ ...prev, metodoPago: value }))}
                     className="space-y-3"
                   >
-                    <Card className={`cursor-pointer transition-all ${formData.metodoPago === "contado" ? "border-primary" : ""}`}>
+                    <Card
+                      role="button"
+                      tabIndex={0}
+                      className={`cursor-pointer transition-all ${formData.metodoPago === "contado" ? "border-primary" : ""}`}
+                      onClick={() => setFormData((prev) => ({ ...prev, metodoPago: "contado" }))}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault()
+                          setFormData((prev) => ({ ...prev, metodoPago: "contado" }))
+                        }
+                      }}
+                    >
                       <CardContent className="flex items-center gap-4 p-4">
                         <RadioGroupItem value="contado" id="contado" />
                         <div className="flex-1">
-                          <Label htmlFor="contado" className="cursor-pointer font-medium">
-                            Pago de contado (año completo)
-                          </Label>
+                          <span className="font-medium">Pago de contado (año completo)</span>
                           <p className="text-sm text-muted-foreground">
-                            10% de descuento abonando el año completo
+                            Pago único por el año completo
                           </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-lg font-bold text-primary">
-                            ${Math.round(formData.precio * 10 * 0.9).toLocaleString()}
-                          </p>
-                          <p className="text-xs text-muted-foreground line-through">
-                            ${(formData.precio * 10).toLocaleString()}
-                          </p>
+                          {montoMatricula != null && (
+                            <p className="text-sm font-medium text-primary mt-1">
+                              Total: {formatPesos(montoMatricula)}
+                            </p>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
 
-                    <Card className={`cursor-pointer transition-all ${formData.metodoPago === "cuotas" ? "border-primary" : ""}`}>
+                    <Card
+                      role="button"
+                      tabIndex={0}
+                      className={`cursor-pointer transition-all ${formData.metodoPago === "cuotas" ? "border-primary" : ""}`}
+                      onClick={() => setFormData((prev) => ({ ...prev, metodoPago: "cuotas" }))}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault()
+                          setFormData((prev) => ({ ...prev, metodoPago: "cuotas" }))
+                        }
+                      }}
+                    >
                       <CardContent className="flex items-center gap-4 p-4">
                         <RadioGroupItem value="cuotas" id="cuotas" />
                         <div className="flex-1">
-                          <Label htmlFor="cuotas" className="cursor-pointer font-medium">
-                            Cuotas mensuales
-                          </Label>
+                          <span className="font-medium">Cuotas mensuales (financiado)</span>
                           <p className="text-sm text-muted-foreground">
-                            10 cuotas iguales (marzo a diciembre)
+                            10 cuotas mensuales (matrícula / 10 por pago)
                           </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-lg font-bold">
-                            ${formData.precio.toLocaleString()}/mes
-                          </p>
+                          {cuotaMensual != null && (
+                            <p className="text-sm font-medium text-primary mt-1">
+                              {formatPesos(cuotaMensual)} por mes · Total: {formatPesos(montoMatricula ?? undefined)}
+                            </p>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -990,25 +863,25 @@ export default function InscribirsePage() {
                       </div>
                     </div>
 
-                    {user.esMenor && formData.tutorNombre && (
+                    {user.esMenor && user.tutorNombre && (
                       <div className="rounded-lg border p-4 space-y-3">
                         <h3 className="font-medium">Tutor/Responsable</h3>
                         <div className="grid gap-2 text-sm sm:grid-cols-2">
                           <div>
                             <span className="text-muted-foreground">Nombre: </span>
-                            <span className="font-medium">{formData.tutorNombre} {formData.tutorApellido}</span>
+                            <span className="font-medium">{user.tutorNombre} {user.tutorApellido}</span>
                           </div>
                           <div>
                             <span className="text-muted-foreground">DNI: </span>
-                            <span className="font-medium">{formData.tutorDni}</span>
+                            <span className="font-medium">{user.tutorDni}</span>
                           </div>
                           <div>
                             <span className="text-muted-foreground">Relación: </span>
-                            <span className="font-medium capitalize">{formData.tutorRelacion}</span>
+                            <span className="font-medium capitalize">{user.tutorRelacion}</span>
                           </div>
                           <div>
                             <span className="text-muted-foreground">Teléfono: </span>
-                            <span className="font-medium">{formData.tutorTelefono}</span>
+                            <span className="font-medium">{user.tutorTelefono}</span>
                           </div>
                         </div>
                       </div>
@@ -1037,20 +910,28 @@ export default function InscribirsePage() {
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Método de pago</span>
                         <span className="font-medium">
-                          {formData.metodoPago === "contado" ? "Pago de contado (10% desc.)" : "Cuotas mensuales"}
+                          {formData.metodoPago === "contado" ? "Pago de contado" : "Cuotas mensuales"}
                         </span>
                       </div>
+                      {formData.metodoPago === "cuotas" && cuotaMensual != null && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Cuota mensual (10 pagos)</span>
+                          <span className="font-medium">{formatPesos(cuotaMensual)}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between text-lg">
                         <span className="font-medium">Total</span>
-                        <span className="font-bold text-primary">
-                          {formData.metodoPago === "contado" 
-                            ? `$${Math.round(formData.precio * 10 * 0.9).toLocaleString()}`
-                            : `$${formData.precio.toLocaleString()}/mes`
-                          }
-                        </span>
+                        <span className="font-bold text-primary">{formatPesos(montoMatricula)}</span>
                       </div>
                     </div>
                   </div>
+
+                  {submitError && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{submitError}</AlertDescription>
+                    </Alert>
+                  )}
                 </div>
               )}
 
@@ -1071,9 +952,18 @@ export default function InscribirsePage() {
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 ) : (
-                  <Button onClick={handleSubmit} disabled={!canProceed()}>
-                    <Check className="mr-2 h-4 w-4" />
-                    Confirmar Inscripción
+                  <Button onClick={handleSubmit} disabled={!canProceed() || isSubmitting}>
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Confirmando...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="mr-2 h-4 w-4" />
+                        Confirmar Inscripción
+                      </>
+                    )}
                   </Button>
                 )}
               </div>

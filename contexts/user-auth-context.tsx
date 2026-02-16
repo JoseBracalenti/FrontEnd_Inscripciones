@@ -2,8 +2,14 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react"
 import { authService } from "@/lib/services/auth.service"
+import { inscripcionesService } from "@/lib/services/inscripciones.service"
 import * as tokenStorage from "@/lib/utils/token-storage"
 import type { AuthProfile } from "@/lib/auth.types"
+import type {
+  AltaAlumnoRequest,
+  DatosResponsableDto,
+  PerfilAlumnoResponse,
+} from "@/lib/inscripciones.types"
 
 export interface UserProfile {
   id: string
@@ -31,25 +37,57 @@ interface UserAuthContextType {
   user: UserProfile | null
   isLoading: boolean
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
-  register: (data: RegisterData) => Promise<{ success: boolean; error?: string; wasLinked?: boolean }>
+  register: (data: RegisterData) => Promise<{ success: boolean; error?: string }>
   logout: () => void
   updateProfile: (data: Partial<UserProfile>) => void
 }
 
-interface RegisterData {
-  email: string
+export interface RegisterData {
+  username: string
   password: string
-  dni: string
+  // alumno (DatosAlumnoDto)
   nombre: string
   apellido: string
-  fechaNacimiento: string
+  numeroDocumento: string
+  tipoDocumento?: string
   domicilio: string
-  telefono: string
+  localidad: string
+  telefono?: string
+  email?: string
+  fechaNacimiento: string
+  sexo: string
+  escuela?: string
+  nivelEscolar?: string
+  poseeCud?: boolean
+  discapacidad?: string
+  ocupacion?: string
+  // responsable (optional; required for minors)
+  responsableNombre?: string
+  responsableApellido?: string
+  responsableParentesco?: string
+  responsableTipoDocumento?: string
+  responsableNumeroDocumento?: string
+  responsableDomicilio?: string
+  responsableLocalidad?: string
+  responsableTelefono?: string
+  responsableEmail?: string
+  responsableSexo?: string
+  responsableOcupacion?: string
 }
 
 const UserAuthContext = createContext<UserAuthContextType | undefined>(undefined)
 
 const REFRESH_INTERVAL_MS = 14 * 60 * 1000 // 14 minutes
+
+function isMinor(fechaNacimiento: string): boolean {
+  if (!fechaNacimiento) return false
+  const nac = new Date(fechaNacimiento)
+  const hoy = new Date()
+  let edad = hoy.getFullYear() - nac.getFullYear()
+  const mes = hoy.getMonth() - nac.getMonth()
+  if (mes < 0 || (mes === 0 && hoy.getDate() < nac.getDate())) edad--
+  return edad < 18
+}
 
 function authProfileToUserProfile(profile: AuthProfile): UserProfile {
   return {
@@ -67,14 +105,38 @@ function authProfileToUserProfile(profile: AuthProfile): UserProfile {
   }
 }
 
-// Simulated existing students (used only by register flow; login uses real API)
-const EXISTING_STUDENTS = [
-  { dni: "45123456", nombre: "María", apellido: "González", fechaNacimiento: "2010-05-15", domicilio: "Calle San Martín 123", telefono: "3424567890" },
-  { dni: "42987654", nombre: "Juan", apellido: "Pérez", fechaNacimiento: "2008-11-22", domicilio: "Av. Rivadavia 456", telefono: "3426789012" },
-  { dni: "38654321", nombre: "Laura", apellido: "Rodríguez", fechaNacimiento: "1995-03-10", domicilio: "Belgrano 789", telefono: "3421234567" },
-]
+function perfilAlumnoToUserProfile(authId: string, perfil: PerfilAlumnoResponse): UserProfile {
+  const r = perfil.responsable
+  const esMenor = isMinor(perfil.fechaNacimiento)
+  return {
+    id: authId,
+    email: perfil.email ?? "",
+    dni: perfil.numeroDocumento ?? "",
+    nombre: perfil.nombre,
+    apellido: perfil.apellido,
+    fechaNacimiento: perfil.fechaNacimiento ?? "",
+    domicilio: perfil.domicilio ?? "",
+    telefono: perfil.telefono ?? "",
+    esMenor,
+    tutorNombre: r?.nombre,
+    tutorApellido: r?.apellido,
+    tutorDni: r?.numeroDocumento ?? undefined,
+    tutorRelacion: r?.parentesco ?? undefined,
+    tutorTelefono: r?.telefono ?? undefined,
+    tutorEmail: r?.email ?? undefined,
+    existiaEnSistema: perfil.existedPreviously === true,
+    createdAt: new Date().toISOString(),
+  }
+}
 
-const REGISTERED_USERS: Array<{ email: string; password: string; profile: UserProfile }> = []
+async function fetchFullUserProfile(authProfile: AuthProfile): Promise<UserProfile> {
+  try {
+    const perfil = await inscripcionesService.getPerfil()
+    return perfilAlumnoToUserProfile(authProfile.id, perfil)
+  } catch {
+    return authProfileToUserProfile(authProfile)
+  }
+}
 
 export function UserAuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null)
@@ -84,15 +146,17 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
   const checkAuth = useCallback(async () => {
     const accessToken = tokenStorage.getAccessToken()
     if (!accessToken || tokenStorage.isTokenExpired(accessToken)) {
+      tokenStorage.clearTokens()
       setUser(null)
       setIsLoading(false)
       return
     }
     try {
-      const profile = await authService.getProfile()
-      setUser(authProfileToUserProfile(profile))
+      const authProfile = await authService.getProfile()
+      const fullProfile = await fetchFullUserProfile(authProfile)
+      setUser(fullProfile)
       if (typeof window !== "undefined") {
-        localStorage.setItem("liceo_student_user", JSON.stringify(authProfileToUserProfile(profile)))
+        localStorage.setItem("liceo_student_user", JSON.stringify(fullProfile))
       }
     } catch {
       tokenStorage.clearTokens()
@@ -142,82 +206,94 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (emailOrUsername: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
       await authService.login(emailOrUsername, password)
-      const profile = await authService.getProfile()
-      const mapped = authProfileToUserProfile(profile)
-      setUser(mapped)
-      if (typeof window !== "undefined") {
-        localStorage.setItem("liceo_student_user", JSON.stringify(mapped))
-      }
-      setupAutoRefresh()
-      return { success: true }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Credenciales incorrectas"
       return { success: false, error: message }
     }
+    try {
+      const authProfile = await authService.getProfile()
+      const fullProfile = await fetchFullUserProfile(authProfile)
+      setUser(fullProfile)
+      if (typeof window !== "undefined") {
+        localStorage.setItem("liceo_student_user", JSON.stringify(fullProfile))
+      }
+      setupAutoRefresh()
+      return { success: true }
+    } catch {
+      tokenStorage.clearTokens()
+      return { success: false, error: "Sesión iniciada pero no se pudo cargar tu perfil. Intentá de nuevo." }
+    }
   }, [setupAutoRefresh])
 
-  const register = useCallback(async (data: RegisterData): Promise<{ success: boolean; error?: string; wasLinked?: boolean }> => {
-    await new Promise(resolve => setTimeout(resolve, 800))
-    if (REGISTERED_USERS.find(u => u.email === data.email)) {
-      return { success: false, error: "Este email ya está registrado. Intentá iniciar sesión." }
+  const register = useCallback(async (data: RegisterData): Promise<{ success: boolean; error?: string }> => {
+    const alumno = {
+      nombre: data.nombre,
+      apellido: data.apellido,
+      numeroDocumento: data.numeroDocumento,
+      domicilio: data.domicilio,
+      localidad: data.localidad,
+      fechaNacimiento: data.fechaNacimiento,
+      sexo: data.sexo,
+      ...(data.tipoDocumento && { tipoDocumento: data.tipoDocumento }),
+      ...(data.telefono != null && data.telefono !== "" && { telefono: data.telefono }),
+      ...(data.email != null && data.email !== "" && { email: data.email }),
+      ...(data.escuela != null && data.escuela !== "" && { escuela: data.escuela }),
+      ...(data.nivelEscolar != null && data.nivelEscolar !== "" && { nivelEscolar: data.nivelEscolar }),
+      ...(data.poseeCud != null && { poseeCud: data.poseeCud }),
+      ...(data.discapacidad != null && data.discapacidad !== "" && { discapacidad: data.discapacidad }),
+      ...(data.ocupacion != null && data.ocupacion !== "" && { ocupacion: data.ocupacion }),
     }
-    if (REGISTERED_USERS.find(u => u.profile.dni === data.dni)) {
-      return { success: false, error: "Este DNI ya tiene una cuenta asociada. Intentá iniciar sesión." }
-    }
-    const existingStudent = EXISTING_STUDENTS.find(s => s.dni === data.dni)
-    let wasLinked = false
-    let profileData: UserProfile
-    if (existingStudent) {
-      if (existingStudent.nombre.toLowerCase() !== data.nombre.toLowerCase() ||
-          existingStudent.apellido.toLowerCase() !== data.apellido.toLowerCase()) {
-        return { success: false, error: "Los datos ingresados no coinciden con los registros existentes para este DNI. Verificá nombre y apellido." }
-      }
-      const fechaNac = new Date(existingStudent.fechaNacimiento)
-      const hoy = new Date()
-      let edad = hoy.getFullYear() - fechaNac.getFullYear()
-      const mes = hoy.getMonth() - fechaNac.getMonth()
-      if (mes < 0 || (mes === 0 && hoy.getDate() < fechaNac.getDate())) edad--
-      profileData = {
-        id: `STU-${Date.now()}`,
-        email: data.email,
-        dni: existingStudent.dni,
-        nombre: existingStudent.nombre,
-        apellido: existingStudent.apellido,
-        fechaNacimiento: existingStudent.fechaNacimiento,
-        domicilio: existingStudent.domicilio,
-        telefono: existingStudent.telefono,
-        esMenor: edad < 18,
-        existiaEnSistema: true,
-        createdAt: new Date().toISOString(),
-      }
-      wasLinked = true
-    } else {
-      const fechaNac = new Date(data.fechaNacimiento)
-      const hoy = new Date()
-      let edad = hoy.getFullYear() - fechaNac.getFullYear()
-      const mes = hoy.getMonth() - fechaNac.getMonth()
-      if (mes < 0 || (mes === 0 && hoy.getDate() < fechaNac.getDate())) edad--
-      profileData = {
-        id: `STU-${Date.now()}`,
-        email: data.email,
-        dni: data.dni,
-        nombre: data.nombre,
-        apellido: data.apellido,
-        fechaNacimiento: data.fechaNacimiento,
-        domicilio: data.domicilio,
-        telefono: data.telefono,
-        esMenor: edad < 18,
-        existiaEnSistema: false,
-        createdAt: new Date().toISOString(),
+    let responsable: DatosResponsableDto | undefined
+    if (
+      data.responsableNombre != null && data.responsableNombre.trim() !== "" &&
+      data.responsableApellido != null && data.responsableApellido.trim() !== ""
+    ) {
+      responsable = {
+        nombre: data.responsableNombre.trim(),
+        apellido: data.responsableApellido.trim(),
+        ...(data.responsableParentesco != null && data.responsableParentesco !== "" && { parentesco: data.responsableParentesco }),
+        ...(data.responsableTipoDocumento != null && data.responsableTipoDocumento !== "" && { tipoDocumento: data.responsableTipoDocumento }),
+        ...(data.responsableNumeroDocumento != null && data.responsableNumeroDocumento !== "" && { numeroDocumento: data.responsableNumeroDocumento }),
+        ...(data.responsableDomicilio != null && data.responsableDomicilio !== "" && { domicilio: data.responsableDomicilio }),
+        ...(data.responsableLocalidad != null && data.responsableLocalidad !== "" && { localidad: data.responsableLocalidad }),
+        ...(data.responsableTelefono != null && data.responsableTelefono !== "" && { telefono: data.responsableTelefono }),
+        ...(data.responsableEmail != null && data.responsableEmail !== "" && { email: data.responsableEmail }),
+        ...(data.responsableSexo != null && data.responsableSexo !== "" && { sexo: data.responsableSexo }),
+        ...(data.responsableOcupacion != null && data.responsableOcupacion !== "" && { ocupacion: data.responsableOcupacion }),
       }
     }
-    REGISTERED_USERS.push({ email: data.email, password: data.password, profile: profileData })
-    setUser(profileData)
-    if (typeof window !== "undefined") {
-      localStorage.setItem("liceo_student_user", JSON.stringify(profileData))
+    const payload: AltaAlumnoRequest = {
+      alumno,
+      username: data.username,
+      password: data.password,
+      ...(responsable && { responsable }),
     }
-    return { success: true, wasLinked }
-  }, [])
+    try {
+      const response = await inscripcionesService.registerAlumno(payload)
+      try {
+        await authService.login(response.username, data.password)
+        const authProfile = await authService.getProfile()
+        const fullProfile = await fetchFullUserProfile(authProfile)
+        if (response.existedPreviously === true) {
+          fullProfile.existiaEnSistema = true
+        }
+        setUser(fullProfile)
+        if (typeof window !== "undefined") {
+          localStorage.setItem("liceo_student_user", JSON.stringify(fullProfile))
+        }
+        setupAutoRefresh()
+        return { success: true }
+      } catch {
+        return {
+          success: false,
+          error: "Cuenta creada pero no se pudo iniciar sesión. Intentá iniciar sesión con tu usuario y contraseña.",
+        }
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error al crear la cuenta"
+      return { success: false, error: message }
+    }
+  }, [setupAutoRefresh])
 
   const logout = useCallback(() => {
     authService.logout()
@@ -236,8 +312,6 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
       if (typeof window !== "undefined") {
         localStorage.setItem("liceo_student_user", JSON.stringify(updated))
       }
-      const idx = REGISTERED_USERS.findIndex(u => u.profile.id === prev.id)
-      if (idx !== -1) REGISTERED_USERS[idx].profile = updated
       return updated
     })
   }, [])

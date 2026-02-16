@@ -1,8 +1,6 @@
 "use client"
 
-import React from "react"
-
-import { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -25,8 +23,16 @@ function safeRedirect(redirect: string | null): string {
 export default function UserLoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { login } = useUserAuth()
+  const { login, user, isLoading: authLoading } = useUserAuth()
   const [isLoading, setIsLoading] = useState(false)
+
+  // If already logged in, redirect to target or inscribirse
+  useEffect(() => {
+    if (!authLoading && user) {
+      const redirect = searchParams.get("redirect")
+      router.replace(safeRedirect(redirect))
+    }
+  }, [authLoading, user, router, searchParams])
   const [error, setError] = useState("")
   const [formData, setFormData] = useState({
     username: "",

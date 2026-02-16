@@ -91,7 +91,8 @@ export class ApiClient {
     }
 
     if (!res.ok) {
-      let message = res.status === 401 ? SESSION_EXPIRED_MESSAGE : "Request failed"
+      // Use "Session expired" only for authenticated requests; for skipAuth (e.g. login/register) use body or generic
+      let message = res.status === 401 && !skipAuth ? SESSION_EXPIRED_MESSAGE : "Request failed"
       try {
         const text = await res.text()
         if (text) {

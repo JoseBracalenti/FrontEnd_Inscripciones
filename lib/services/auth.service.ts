@@ -14,7 +14,12 @@ export const authService = {
       body,
       skipAuth: true,
     })
-    tokenStorage.setTokens(res.access_token, res.refresh_token)
+    const access = res?.access_token
+    const refresh = res?.refresh_token
+    if (!access || !refresh) {
+      throw new Error("El servidor no devolvió tokens de sesión. Revisá la configuración del backend.")
+    }
+    tokenStorage.setTokens(access, refresh)
     return res
   },
 
