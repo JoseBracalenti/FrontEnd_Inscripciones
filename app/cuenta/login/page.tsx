@@ -12,11 +12,11 @@ import Link from "next/link"
 import Image from "next/image"
 import { useUserAuth } from "@/contexts/user-auth-context"
 
-/** Allow only relative paths to avoid open redirect */
+/** Allow only relative paths to avoid open redirect. Default after login: main page. */
 function safeRedirect(redirect: string | null): string {
-  if (!redirect || typeof redirect !== "string") return "/inscribirse"
+  if (!redirect || typeof redirect !== "string") return "/"
   const trimmed = redirect.trim()
-  if (!trimmed.startsWith("/") || trimmed.startsWith("//")) return "/inscribirse"
+  if (!trimmed.startsWith("/") || trimmed.startsWith("//")) return "/"
   return trimmed
 }
 
@@ -26,7 +26,7 @@ export default function UserLoginPage() {
   const { login, user, isLoading: authLoading } = useUserAuth()
   const [isLoading, setIsLoading] = useState(false)
 
-  // If already logged in, redirect to target or inscribirse
+  // If already logged in, redirect to target or main page
   useEffect(() => {
     if (!authLoading && user) {
       const redirect = searchParams.get("redirect")

@@ -87,6 +87,11 @@ export default function PublicPortalPage() {
                 <Link href="/inscribirse">
                   <Button size="sm">Inscribirme</Button>
                 </Link>
+                <Link href="/estudiante">
+                  <Button size="sm" variant="outline" className="bg-transparent">
+                    Mi espacio
+                  </Button>
+                </Link>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="gap-2">

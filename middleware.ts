@@ -2,7 +2,6 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
 const LOGIN_PATH = "/cuenta/login"
-const DEFAULT_AFTER_LOGIN = "/inscribirse"
 
 function isPublicRoute(pathname: string): boolean {
   return (

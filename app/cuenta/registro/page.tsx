@@ -167,7 +167,7 @@ export default function UserRegisterPage() {
 
     if (result.success) {
       setSuccess(true)
-      setTimeout(() => router.push("/inscribirse"), 2000)
+      setTimeout(() => router.push("/"), 2000)
     } else {
       setError(result.error || "Error al crear la cuenta")
     }

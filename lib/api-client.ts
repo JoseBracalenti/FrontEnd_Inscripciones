@@ -129,6 +129,10 @@ export class ApiClient {
     return this.request<T>("PUT", path, options)
   }
 
+  patch<T>(path: string, options?: RequestOptions): Promise<T> {
+    return this.request<T>("PATCH", path, options)
+  }
+
   delete<T>(path: string, options?: RequestOptions): Promise<T> {
     return this.request<T>("DELETE", path, options)
   }
