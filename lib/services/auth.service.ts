@@ -6,8 +6,9 @@ import type {
   LoginResponse,
   RefreshRequest,
 } from "@/lib/auth.types"
+import { authServiceMock } from "@/lib/mocks/auth.mock"
 
-export const authService = {
+const authServiceReal = {
   async login(username: string, password: string): Promise<LoginResponse> {
     const body: LoginRequest = { username, password }
     const res = await apiClient.post<LoginResponse>("/api/auth/login", {
@@ -51,3 +52,6 @@ export const authService = {
     return res
   },
 }
+
+export const authService =
+  process.env.NEXT_PUBLIC_USE_MOCKS === "true" ? authServiceMock : authServiceReal

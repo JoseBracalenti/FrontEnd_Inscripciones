@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, ArrowRight, Check } from "lucide-react"
 import Link from "next/link"
+import { adminService } from "@/lib/services/admin.service"
 
 const STEPS = [
   { id: 1, name: "Datos Personales" },
@@ -58,6 +59,7 @@ export default function NuevaInscripcionPage() {
   })
   
   const [edad, setEdad] = useState<number | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const calcularEdad = (fechaNacimiento: string) => {
     if (!fechaNacimiento) return null
@@ -88,6 +90,35 @@ export default function NuevaInscripcionPage() {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1)
     }
+  }
+
+  const handleConfirmar = async () => {
+    setIsSubmitting(true)
+    await adminService.crearInscripcion({
+      nombre: formData.nombre,
+      apellido: formData.apellido,
+      dni: formData.dni,
+      fechaNacimiento: formData.fechaNacimiento,
+      domicilio: formData.domicilio,
+      telefono: formData.telefono,
+      email: formData.email,
+      esMenor: formData.esMenor,
+      tutorNombre: formData.tutorNombre,
+      tutorApellido: formData.tutorApellido,
+      tutorDni: formData.tutorDni,
+      tutorRelacion: formData.tutorRelacion,
+      tutorTelefono: formData.tutorTelefono,
+      tutorEmail: formData.tutorEmail,
+      emergenciaNombre: formData.emergenciaNombre,
+      emergenciaTelefono: formData.emergenciaTelefono,
+      tipoCurso: formData.tipoCurso,
+      curso: formData.curso,
+      division: formData.division,
+      horario: formData.horario,
+      metodoPago: formData.metodoPago as "contado" | "cuotas",
+    })
+    setIsSubmitting(false)
+    setCurrentStep(1)
   }
 
   return (
@@ -681,9 +712,14 @@ export default function NuevaInscripcionPage() {
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               ) : (
-                <Button size="lg" className="bg-green-600 hover:bg-green-700">
+                <Button
+                  size="lg"
+                  className="bg-green-600 hover:bg-green-700"
+                  disabled={isSubmitting}
+                  onClick={handleConfirmar}
+                >
                   <Check className="h-4 w-4 mr-2" />
-                  Confirmar Inscripción
+                  {isSubmitting ? "Guardando..." : "Confirmar Inscripción"}
                 </Button>
               )}
             </div>

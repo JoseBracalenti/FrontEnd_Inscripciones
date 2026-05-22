@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
-import { Badge } from "@/components/ui/badge"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { 
@@ -20,8 +19,7 @@ import {
   Printer, 
   Home, 
   Clock, 
-  Users, 
-  AlertCircle, 
+  AlertCircle,
   LogOut,
   User,
   Info,
@@ -632,37 +630,31 @@ export default function InscribirsePage() {
                           <div className="grid gap-3 sm:grid-cols-2">
                             {availableCourses
                               .filter((c) => c.carreraNombre === carrera)
-                              .map((course) => {
-                                const totalCupos = course.divisiones.filter(
-                                  (d) => d.cupo > d.cantidadInscriptos
-                                ).length
-                                return (
-                                  <Card
-                                    key={course.id}
-                                    className={`cursor-pointer transition-all hover:border-primary ${
-                                      formData.curso === course.id ? "border-primary bg-primary/5" : ""
-                                    }`}
-                                    onClick={() => handleCourseSelect(course.id)}
-                                  >
-                                    <CardContent className="p-4">
-                                      <div className="flex items-start justify-between gap-2">
-                                        <div>
-                                          <h4 className="font-medium">{course.descripcion}</h4>
-                                          <p className="text-xs text-muted-foreground">
-                                            {course.edadMinima}–{course.edadMaxima} años · {totalCupos}{" "}
-                                            división{totalCupos !== 1 ? "es" : ""} con cupo
+                              .map((course) => (
+                                <Card
+                                  key={course.id}
+                                  className={`cursor-pointer transition-all hover:border-primary ${
+                                    formData.curso === course.id ? "border-primary bg-primary/5" : ""
+                                  }`}
+                                  onClick={() => handleCourseSelect(course.id)}
+                                >
+                                  <CardContent className="p-4">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div>
+                                        <h4 className="font-medium">{course.descripcion}</h4>
+                                        <p className="text-xs text-muted-foreground">
+                                          {course.edadMinima}–{course.edadMaxima} años
+                                        </p>
+                                        {course.montoMatricula != null && (
+                                          <p className="text-sm font-medium text-primary mt-1">
+                                            {formatPesos(course.montoMatricula)}
                                           </p>
-                                          {course.montoMatricula != null && (
-                                            <p className="text-sm font-medium text-primary mt-1">
-                                              {formatPesos(course.montoMatricula)}
-                                            </p>
-                                          )}
-                                        </div>
+                                        )}
                                       </div>
-                                    </CardContent>
-                                  </Card>
-                                )
-                              })}
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              ))}
                           </div>
                         </div>
                       ))}
@@ -698,7 +690,7 @@ export default function InscribirsePage() {
                             }`}
                             onClick={() => handleDivisionSelect(division)}
                           >
-                            <CardContent className="flex items-center justify-between p-4">
+                            <CardContent className="p-4">
                               <div className="flex items-center gap-4">
                                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
                                   <span className="font-bold text-primary">{division.letra}</span>
@@ -715,12 +707,6 @@ export default function InscribirsePage() {
                                     </p>
                                   )}
                                 </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Users className="h-4 w-4 text-muted-foreground" />
-                                <Badge variant={division.spots <= 2 ? "destructive" : "secondary"}>
-                                  {division.spots} cupos
-                                </Badge>
                               </div>
                             </CardContent>
                           </Card>

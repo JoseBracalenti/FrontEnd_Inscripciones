@@ -7,8 +7,9 @@ import type {
   MatriculaResponse,
   PerfilAlumnoResponse,
 } from "@/lib/inscripciones.types"
+import { inscripcionesServiceMock } from "@/lib/mocks/inscripciones.mock"
 
-export const inscripcionesService = {
+const inscripcionesServiceReal = {
   /**
    * POST /api/v1/inscripciones/alumnos — register new student (no auth).
    * 201: AlumnoResponse; 400/409: throws with message from body.
@@ -48,3 +49,6 @@ export const inscripcionesService = {
     })
   },
 }
+
+export const inscripcionesService =
+  process.env.NEXT_PUBLIC_USE_MOCKS === "true" ? inscripcionesServiceMock : inscripcionesServiceReal

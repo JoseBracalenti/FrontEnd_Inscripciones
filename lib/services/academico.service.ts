@@ -6,6 +6,7 @@ import type {
   MiHistoriaAcademicaResponse,
   UpdateAsistenciaBody,
 } from "@/lib/academico.types"
+import { academicoServiceMock } from "@/lib/mocks/academico.mock"
 
 const PREFIX = "/api/v1/academico"
 
@@ -20,7 +21,7 @@ function buildQuery(params: Record<string, string | number | undefined>): string
   return q ? `?${q}` : ""
 }
 
-export const academicoService = {
+const academicoServiceReal = {
   /**
    * GET /api/v1/academico/mis-inscripciones?anio=
    * Omit anio or leave empty to use current year.
@@ -74,3 +75,6 @@ export const academicoService = {
     return apiClient.patch<void>(`${PREFIX}/asistencia/${idAsistencia}`, { body })
   },
 }
+
+export const academicoService =
+  process.env.NEXT_PUBLIC_USE_MOCKS === "true" ? academicoServiceMock : academicoServiceReal

@@ -2,19 +2,15 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { 
-  BookOpen, 
-  Music, 
-  Palette, 
-  GraduationCap, 
-  Clock, 
-  Users, 
+import {
+  BookOpen,
+  Music,
+  Palette,
+  GraduationCap,
+  Clock,
   ChevronRight,
-  Search,
   Phone,
   MapPin,
   Mail,
@@ -53,12 +49,6 @@ const courseCategories = [
   }
 ]
 
-const featuredCourses = [
-  { name: "Inglés Básico", category: "Idiomas", spots: 5, schedule: "Lunes y Miércoles 18:00", age: "Desde 12 años" },
-  { name: "Guitarra Nivel 1", category: "Música", spots: 3, schedule: "Martes y Jueves 19:00", age: "Desde 10 años" },
-  { name: "Piano Inicial", category: "Música", spots: 2, schedule: "Sábados 10:00", age: "Desde 8 años" },
-  { name: "Francés Intermedio", category: "Idiomas", spots: 8, schedule: "Viernes 17:00", age: "Desde 15 años" },
-]
 
 export default function PublicPortalPage() {
   const { user, logout } = useUserAuth()
@@ -127,7 +117,7 @@ export default function PublicPortalPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-primary py-16 sm:py-24">
+      <section className="relative overflow-hidden bg-primary py-10 sm:py-14">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIvPjwvZz48L2c+PC9zdmc+')] opacity-50"></div>
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
@@ -135,7 +125,7 @@ export default function PublicPortalPage() {
               Inscripciones Abiertas - Ciclo 2026
             </Badge>
             <h2 className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl text-balance">
-              Descubrí tu pasión en el Liceo Municipal
+              Liceo Municipal
             </h2>
             <p className="mx-auto mt-6 max-w-2xl text-lg text-white/80 text-pretty">
               Cursos de idiomas, instrumentos musicales y talleres artísticos para todas las edades. 
@@ -160,7 +150,7 @@ export default function PublicPortalPage() {
       </section>
 
       {/* Course Categories */}
-      <section id="cursos" className="py-16 sm:py-24">
+      <section id="cursos" className="py-10 sm:py-14">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h3 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
@@ -171,26 +161,23 @@ export default function PublicPortalPage() {
             </p>
           </div>
 
-          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-12 mx-auto max-w-2xl flex flex-col gap-4">
             {courseCategories.map((category) => (
-              <Card key={category.id} className="group relative overflow-hidden transition-all hover:shadow-lg">
-                <CardHeader className="pb-4">
-                  <div className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg border ${category.color}`}>
-                    <category.icon className="h-6 w-6" />
+              <Card key={category.id} className="transition-all hover:shadow-lg">
+                <CardContent className="flex items-center gap-6 p-6">
+                  <div className={`shrink-0 inline-flex h-14 w-14 items-center justify-center rounded-xl border ${category.color}`}>
+                    <category.icon className="h-7 w-7" />
                   </div>
-                  <CardTitle className="text-xl">{category.name}</CardTitle>
-                  <CardDescription>{category.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">{category.courses} cursos disponibles</span>
-                    <Link href={`/inscribirse?categoria=${category.id}`}>
-                      <Button variant="ghost" size="sm" className="group-hover:bg-primary group-hover:text-primary-foreground">
-                        Ver cursos
-                        <ChevronRight className="ml-1 h-4 w-4" />
-                      </Button>
-                    </Link>
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-xl">{category.name}</CardTitle>
+                    <CardDescription className="mt-1">{category.description}</CardDescription>
                   </div>
+                  <Link href={`/cursos/${category.id}`} className="shrink-0">
+                    <Button variant="outline" size="sm" className="bg-transparent">
+                      Ver cursos
+                      <ChevronRight className="ml-1 h-4 w-4" />
+                    </Button>
+                  </Link>
                 </CardContent>
               </Card>
             ))}
@@ -198,55 +185,8 @@ export default function PublicPortalPage() {
         </div>
       </section>
 
-      {/* Featured Courses */}
-      <section className="bg-muted/50 py-16 sm:py-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-            <div>
-              <h3 className="text-3xl font-bold tracking-tight text-foreground">
-                Cursos con Cupos Disponibles
-              </h3>
-              <p className="mt-2 text-muted-foreground">
-                Estos cursos todavía tienen lugar, no te quedes afuera
-              </p>
-            </div>
-            <Link href="/inscribirse">
-              <Button variant="outline" className="bg-transparent">
-                Ver todos los cursos
-              </Button>
-            </Link>
-          </div>
-
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {featuredCourses.map((course, i) => (
-              <Card key={i} className="transition-all hover:shadow-md">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <Badge variant="secondary">{course.category}</Badge>
-                    <Badge variant="outline" className={course.spots <= 3 ? "border-destructive text-destructive" : ""}>
-                      {course.spots} cupos
-                    </Badge>
-                  </div>
-                  <CardTitle className="mt-2 text-lg">{course.name}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    <span>{course.schedule}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    <span>{course.age}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Quick Enrollment Check */}
-      <section className="py-16 sm:py-24">
+      {/* Enrollment Status Check */}
+      <section className="py-10 sm:py-14">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <Card className="overflow-hidden">
             <div className="grid lg:grid-cols-2">
@@ -255,29 +195,37 @@ export default function PublicPortalPage() {
                   Consultá el estado de tu inscripción
                 </h3>
                 <p className="mt-4 text-white/80">
-                  Si ya iniciaste el proceso de inscripción, podés verificar su estado ingresando tu número de DNI
+                  Ingresá a tu cuenta para ver el estado de tus inscripciones, horarios y asistencia
                 </p>
               </div>
-              <div className="p-8 lg:p-12">
-                <form className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="dni">Número de DNI</Label>
-                    <div className="flex gap-2">
-                      <Input 
-                        id="dni" 
-                        placeholder="Ingresá tu DNI sin puntos" 
-                        className="flex-1"
-                      />
-                      <Button type="submit">
-                        <Search className="mr-2 h-4 w-4" />
-                        Consultar
+              <div className="flex flex-col justify-center p-8 lg:p-12">
+                {user ? (
+                  <div className="space-y-4">
+                    <p className="text-muted-foreground text-sm">
+                      Bienvenido/a, <span className="font-medium text-foreground">{user.nombre} {user.apellido}</span>. Podés ver todas tus inscripciones desde tu espacio personal.
+                    </p>
+                    <Link href="/estudiante">
+                      <Button className="w-full sm:w-auto">
+                        Ver mis inscripciones
+                        <ChevronRight className="ml-2 h-4 w-4" />
                       </Button>
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-muted-foreground text-sm">
+                      Iniciá sesión con tu cuenta para consultar el estado de tus inscripciones
+                    </p>
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <Link href="/cuenta/login">
+                        <Button className="w-full sm:w-auto">Iniciar sesión</Button>
+                      </Link>
+                      <Link href="/cuenta/registro">
+                        <Button variant="outline" className="w-full bg-transparent sm:w-auto">Crear cuenta</Button>
+                      </Link>
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    También podés consultar con el comprobante de inscripción que recibiste por email
-                  </p>
-                </form>
+                )}
               </div>
             </div>
           </Card>
@@ -285,7 +233,7 @@ export default function PublicPortalPage() {
       </section>
 
       {/* Info Section */}
-      <section className="bg-muted/50 py-16 sm:py-24">
+      <section className="bg-muted/50 py-10 sm:py-14">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid gap-8 lg:grid-cols-3">
             <Card>
@@ -310,7 +258,7 @@ export default function PublicPortalPage() {
                 <CardTitle>Ubicación</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm text-muted-foreground">
-                <p>Av. 7 de Marzo 2150</p>
+                <p>Castelli 1668</p>
                 <p>Santo Tomé, Santa Fe</p>
                 <p>Argentina</p>
               </CardContent>
