@@ -25,6 +25,7 @@ import {
 import Link from "next/link"
 import Image from "next/image"
 import { useUserAuth } from "@/contexts/user-auth-context"
+import { ADMIN_DEMO_ENABLED } from "@/lib/feature-flags"
 
 const courseCategories = [
   {
@@ -359,9 +360,11 @@ export default function PublicPortalPage() {
 <p className="text-xs text-muted-foreground">
 2026 Todos los derechos reservados
 </p>
+{ADMIN_DEMO_ENABLED && (
 <Link href="/admin/login" className="text-xs text-muted-foreground hover:text-foreground">
 Acceso Administrativo
 </Link>
+)}
 </div>
 </div>
 </div>
