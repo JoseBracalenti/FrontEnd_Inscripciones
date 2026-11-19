@@ -13,11 +13,24 @@ function isPublicRoute(pathname: string): boolean {
   )
 }
 
+// El router resuelve rutas sin distinguir mayúsculas y decodificando %xx: comparar sobre la ruta normalizada
+// para que /Admin o /%61dmin no esquiven el cierre. Si no se puede decodificar, se trata como admin (404).
+function esRutaAdmin(pathname: string): boolean {
+  let p: string
+  try {
+    p = decodeURIComponent(pathname)
+  } catch {
+    return true
+  }
+  p = p.toLowerCase().replace(/\/{2,}/g, "/")
+  return p === "/admin" || p.startsWith("/admin/")
+}
+
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
   const authCookie = request.cookies.get("auth_token")
 
-  const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/")
+  const isAdminRoute = esRutaAdmin(pathname)
 
   // Prototipo mock /admin: 404 salvo que el flag de build esté prendido (PUF-97)
   if (isAdminRoute && !ADMIN_DEMO_ENABLED) {
