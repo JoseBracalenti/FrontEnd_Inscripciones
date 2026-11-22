@@ -2,6 +2,7 @@ import * as tokenStorage from "@/lib/utils/token-storage"
 import type { LoginResponse } from "@/lib/auth.types"
 
 const SESSION_EXPIRED_MESSAGE = "Session expired. Please login again."
+const TOO_MANY_REQUESTS_MESSAGE = "Demasiados intentos. Esperá unos minutos e intentá de nuevo."
 
 function getBaseUrl(): string {
   return process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080"
@@ -92,7 +93,12 @@ export class ApiClient {
 
     if (!res.ok) {
       // Use "Session expired" only for authenticated requests; for skipAuth (e.g. login/register) use body or generic
-      let message = res.status === 401 && !skipAuth ? SESSION_EXPIRED_MESSAGE : "Request failed"
+      const isTooManyRequests = res.status === 429
+      let message = res.status === 401 && !skipAuth
+        ? SESSION_EXPIRED_MESSAGE
+        : isTooManyRequests
+          ? TOO_MANY_REQUESTS_MESSAGE
+          : "Request failed"
       try {
         const text = await res.text()
         if (text) {
@@ -101,7 +107,8 @@ export class ApiClient {
             if (errBody?.message) message = errBody.message
             else if (errBody?.error) message = errBody.error
           } catch {
-            message = text
+            // Para 429 el cuerpo puede ser HTML/vacío de un proxy: no usarlo como mensaje
+            if (!isTooManyRequests) message = text
           }
         }
       } catch {
